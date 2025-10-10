@@ -1,0 +1,67 @@
+import random
+
+def random_state(N):
+    return [random.randint(0, N-1) for _ in range(N)]
+
+def heuristic(state):
+    conflicts = 0
+    N = len(state)
+    for i in range(N):
+        for j in range(i+1, N):
+            if state[i] == state[j]:
+                conflicts += 1
+            elif abs(state[i] - state[j]) == abs(i - j):
+                conflicts += 1
+    return conflicts
+
+def generate_neighbors(state):
+    neighbors = []
+    N = len(state)
+    for col in range(N):
+        for row in range(N):
+            if row != state[col]:
+                neighbor = list(state)
+                neighbor[col] = row
+                neighbors.append(neighbor)
+    return neighbors
+
+def print_board(state):
+    N = len(state)
+    for row in range(N):
+        line = ""
+        for col in range(N):
+            if state[col] == row:
+                line += "Q "
+            else:
+                line += ". "
+        print(line)
+    print()
+
+def hill_climbing(N):
+    current = random_state(N)
+    current_cost = heuristic(current)
+    iteration = 0
+
+    print(f"Initial state with conflicts: {current_cost}")
+    print_board(current)
+
+    while True:
+        iteration += 1
+        neighbors = generate_neighbors(current)
+        neighbor_costs = [(heuristic(neigh), neigh) for neigh in neighbors]
+        best_cost, best_neighbor = min(neighbor_costs, key=lambda x: x[0])
+
+        print(f"Iteration {iteration}: Best neighbor conflicts = {best_cost}")
+        print_board(best_neighbor)
+
+        if best_cost >= current_cost:
+            print("No better neighbors found. Stopping.")
+            return current, current_cost
+
+        current, current_cost = best_neighbor, best_cost
+
+# Example usage
+N = int(input("Enter number of queens (N): "))
+solution, cost = hill_climbing(N)
+print(f"Final solution with {cost} conflicts:")
+print_board(solution)
