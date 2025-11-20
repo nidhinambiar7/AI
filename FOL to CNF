@@ -1,0 +1,138 @@
+import re
+import itertools
+
+def remove_implications(expr):
+    """Eliminate ↔ and → using logical equivalences."""
+    # Eliminate ↔ : (A ↔ B) = (A → B) ∧ (B → A)
+    while "↔" in expr:
+        expr = re.sub(r"(.*?)(↔)(.*)", r"(\1 → \3) ∧ (\3 → \1)", expr)
+
+    # Eliminate → : (A → B) = ¬A ∨ B
+    expr = re.sub(r"(.*?)→(.*)", r"(¬(\1)) ∨ (\2)", expr)
+    return expr
+
+
+def push_negation(expr):
+    """Move negations inward using De Morgan rules & quantifier rules."""
+
+    # Double negation
+    expr = re.sub(r"¬¬", "", expr)
+
+    # ¬(A ∧ B) = (¬A ∨ ¬B)
+    expr = re.sub(r"¬\((.*?) ∧ (.*?)\)", r"(¬\1) ∨ (¬\2)", expr)
+
+    # ¬(A ∨ B) = (¬A ∧ ¬B)
+    expr = re.sub(r"¬\((.*?) ∨ (.*?)\)", r"(¬\1) ∧ (¬\2)", expr)
+
+    # Quantifiers:
+    expr = re.sub(r"¬∀([a-z])", r"∃\1¬", expr)
+    expr = re.sub(r"¬∃([a-z])", r"∀\1¬", expr)
+
+    return expr
+
+
+def standardize_variables(expr):
+    """Rename variables so all quantifiers use different names."""
+    variables = "abcdefghijklmnopqrstuvwxyz"
+    mapping = {}
+    new_expr = ""
+
+    counter = 0
+    for ch in expr:
+        if ch in variables:
+            if ch not in mapping:
+                mapping[ch] = variables[counter]
+                counter += 1
+            new_expr += mapping[ch]
+        else:
+            new_expr += ch
+    return new_expr
+
+
+skolem_counter = 1
+
+def skolemize(expr):
+    """Remove existential quantifiers replacing them with Skolem constants/functions."""
+    global skolem_counter
+
+    # Replace ∃x P(x) with P(G1)
+    pattern = r"∃([a-z])\s*(\w+)\((.*?)\)"
+    match = re.search(pattern, expr)
+
+    while match:
+        var = match.group(1)
+        pred = match.group(2)
+        args = match.group(3)
+
+        new_const = f"G{skolem_counter}"
+        skolem_counter += 1
+
+        expr = re.sub(pattern, f"{pred}({new_const})", expr)
+        match = re.search(pattern, expr)
+
+    return expr
+
+
+def drop_universal(expr):
+    """Remove ∀ quantifiers (they are implicit in CNF)."""
+    expr = expr.replace("∀", "")
+    return expr
+
+
+def distribute_and_over_or(expr):
+    """Distribute ∧ over ∨ (very simplified CNF converter)."""
+    # This function is intentionally simple and works for standard textbook examples.
+
+    # (A ∧ B) ∨ C -> (A ∨ C) ∧ (B ∨ C)
+    pattern = r"\((.*?) ∧ (.*?)\) ∨ (.*)"
+    if re.search(pattern, expr):
+        A, B, C = re.findall(pattern, expr)[0]
+        return f"({A} ∨ {C}) ∧ ({B} ∨ {C})"
+
+    return expr
+
+def convert_to_cnf(expr):
+    print("\n---- Step 1: Remove ↔ and → ----")
+    expr = remove_implications(expr)
+    print(expr)
+
+    print("\n---- Step 2: Push ¬ inward ----")
+    expr = push_negation(expr)
+    print(expr)
+
+    print("\n---- Step 3: Standardize variables ----")
+    expr = standardize_variables(expr)
+    print(expr)
+
+    print("\n---- Step 4: Skolemize ----")
+    expr = skolemize(expr)
+    print(expr)
+
+    print("\n---- Step 5: Drop universal quantifier ----")
+    expr = drop_universal(expr)
+    print(expr)
+
+    print("\n---- Step 6: Distribute ∧ over ∨ ----")
+    expr = distribute_and_over_or(expr)
+    print(expr)
+
+    return expr
+
+print("Enter a First-Order Logic Statement to Convert to CNF:")
+print("Example input:")
+print("   ∀x (P(x) → ∃y Q(x,y))")
+print("   (A ↔ B)")
+print("--------------------------------------------------------------")
+
+expr = input("\nEnter formula: ")
+
+print("\n==============================================================")
+print("                   CNF CONVERSION STEPS")
+print("==============================================================")
+
+cnf = convert_to_cnf(expr)
+
+print("\n==============================================================")
+print("Final CNF:")
+print(cnf)
+print("==============================================================")
